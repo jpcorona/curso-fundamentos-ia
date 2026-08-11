@@ -1,0 +1,11 @@
+POLITICA VACACIONES - EMPRESA ACME
+
+1. Dias base: cada con contrato indefinido tienen 15 dias habiles de vacaciones al año.
+
+2. Antiguedad. a partir del quinto año en la empresa se suman 1 dias adicionales, totalizando 18 dias habiles.
+
+3. solicitud: las vacaciones se piden con al menos 20 dias de anticipacion, a traves del portal interno de RRHH.
+
+4. Acumulacion: se pueden acumular como maximo 10 dias del año anterior.
+
+5. Feriado especial: el dia de cumpleaños es libre y no descuenta del saldo de vacaciones.
