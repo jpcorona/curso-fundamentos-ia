@@ -1,11 +1,10 @@
 import os
 from pathlib import Path
 
-from dotenv import load_dotenv
 from azure.ai.projects import AIProjectClient
 from azure.ai.projects.models import FileSearchTool, PromptAgentDefinition
 from azure.identity import DefaultAzureCredential
-
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -14,68 +13,41 @@ AGENT_NAME = "agente-rrhh"
 
 
 def main():
-    endpoint = os.environ["PROJECT_ENDPOINT"]
-    modelo = os.environ["MODEL_DEPLOYMENT_NAME"]
-
     credential = DefaultAzureCredential()
     project = AIProjectClient(
-        endpoint=endpoint,
+        endpoint=os.environ["PROJECT_ENDPOINT"],
         credential=credential,
     )
     openai = project.get_openai_client()
-
     conversation = None
     agent = None
+    vector_store = None
 
     try:
-        vector_store = openai.vector_stores.create(
-            name="vs-politicas"
-        )
-
+        vector_store = openai.vector_stores.create(name="vs-politicas")
         with POLITICA_PATH.open("rb") as archivo:
             carga = openai.vector_stores.files.upload_and_poll(
                 vector_store_id=vector_store.id,
                 file=archivo,
             )
-
         if getattr(carga, "status", None) == "failed":
-            raise RuntimeError(
-                "Foundry no pudo indexar politica-vacaciones.txt"
-            )
-
-        print(f"Vector store listo: {vector_store.id}")
+            raise RuntimeError("Foundry no pudo indexar el documento")
 
         agent = project.agents.create_version(
             agent_name=AGENT_NAME,
             definition=PromptAgentDefinition(
-                model=modelo,
+                model=os.environ["MODEL_DEPLOYMENT_NAME"],
                 instructions=(
-                    "Eres un asistente de RRHH. Responde solo con la "
-                    "información de los documentos disponibles mediante "
-                    "File Search. Si la respuesta no aparece en ellos, "
-                    "dilo con claridad."
+                    "Responde únicamente con evidencia del documento. "
+                    "Si la respuesta no aparece, dilo con claridad."
                 ),
-                tools=[
-                    FileSearchTool(
-                        vector_store_ids=[vector_store.id]
-                    )
-                ],
-            ),
-            description=(
-                "Ejemplo docente RAG con File Search en Microsoft Foundry."
+                tools=[FileSearchTool(vector_store_ids=[vector_store.id])],
             ),
         )
-
-        print(f"Agente creado: {agent.name} v{agent.version}")
-
         conversation = openai.conversations.create()
-
         response = openai.responses.create(
             conversation=conversation.id,
-            input=(
-                "¿Cuántos días de vacaciones tengo si llevo "
-                "6 años en la empresa?"
-            ),
+            input="¿Cuántos días de vacaciones tengo si llevo 6 años?",
             extra_body={
                 "agent_reference": {
                     "name": agent.name,
@@ -83,32 +55,17 @@ def main():
                 }
             },
         )
-
-        print("\nRespuesta del agente:")
         print(response.output_text)
-
     finally:
         if conversation is not None:
-            try:
-                openai.conversations.delete(
-                    conversation_id=conversation.id
-                )
-            except Exception as exc:
-                print(
-                    f"Aviso: no se pudo borrar la conversación: {exc}"
-                )
-
+            openai.conversations.delete(conversation_id=conversation.id)
         if agent is not None:
-            try:
-                project.agents.delete_version(
-                    agent_name=agent.name,
-                    agent_version=agent.version,
-                )
-            except Exception as exc:
-                print(
-                    f"Aviso: no se pudo borrar la versión del agente: {exc}"
-                )
-
+            project.agents.delete_version(
+                agent_name=agent.name,
+                agent_version=agent.version,
+            )
+        if vector_store is not None:
+            openai.vector_stores.delete(vector_store_id=vector_store.id)
         openai.close()
         project.close()
         credential.close()

@@ -17,6 +17,8 @@ Cada sesión tiene una versión Markdown para GitHub y una versión PDF diseñad
 - `agente_docs.py`: crea un vector store, indexa la política de vacaciones y ejecuta File Search.
 - `politica-vacaciones.txt`: documento de prueba para el ejercicio RAG.
 
+Los scripts anteriores basados en Agents classic se conservan en `legacy_sdk_1x/` para referencia, pero no forman parte del recorrido recomendado.
+
 ## Preparación
 
 ```bash
@@ -50,4 +52,3 @@ Consulta [la auditoría del SDK](materiales/SDK_VERIFICADO.md). No mezcles estos
 ## Trabajo final
 
 Cada estudiante construye un agente de su elección y lo explica mediante una demostración en video de máximo tres minutos. La guía incluye tipos de agentes, entregables, rúbrica y guion cronometrado.
-

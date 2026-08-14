@@ -1,0 +1,8 @@
+azure-ai-projects<2
+azure-ai-agents
+azure-identity
+python-dotenv
+fastapi
+uvicorn
+requests
+
