@@ -4,12 +4,12 @@ Material práctico para construir agentes con **Microsoft Foundry y Python** usa
 
 ## Ruta de aprendizaje
 
-1. [Sesión 1 · Tu primer agente](materiales/01_manual_sesion_1.md)
-2. [Sesión 2 · Agente conectado](materiales/02_manual_sesion_2.md)
-3. [Sesión 3 · De agente a aplicación](materiales/03_manual_sesion_3.md)
-4. [Trabajo final · Construye tu agente](materiales/04_trabajo_final.md)
+1. [Sesión 1 · Tu primer agente](materiales/01_manual_sesion_1.pdf)
+2. [Sesión 2 · Agente conectado](materiales/02_manual_sesion_2.pdf)
+3. [Sesión 3 · De agente a aplicación](materiales/03_manual_sesion_3.pdf)
+4. [Trabajo final · Construye tu agente](materiales/04_trabajo_final.pdf)
 
-Cada sesión tiene una versión Markdown para GitHub y una versión PDF diseñada para lectura o impresión.
+Los materiales se distribuyen como documentos PDF diseñados para lectura o impresión.
 
 ## Ejemplos del repositorio
 
@@ -40,7 +40,7 @@ El curso utiliza `azure-ai-projects` 2.4.0 y la API de datos v1:
 - conversaciones mediante `openai.conversations`;
 - ejecución mediante `openai.responses`.
 
-Consulta [la auditoría del SDK](materiales/SDK_VERIFICADO.md). No mezcles estos ejemplos con Azure AI Projects 1.x / Agents classic.
+No mezcles estos ejemplos con Azure AI Projects 1.x / Agents classic.
 
 ## Seguridad
 
