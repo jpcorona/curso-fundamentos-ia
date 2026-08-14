@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Chat con mi agente</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 40px auto; }
+    #log { border: 1px solid #ccc; padding: 12px; height: 320px; overflow-y: auto; }
+    input { width: 78%; padding: 8px; }
+    button { padding: 8px 14px; }
+  </style>
+</head>
+<body>
+  <h2>Chat con mi agente</h2>
+  <div id="log"></div>
+  <p>
+    <input id="msg" placeholder="Escribe aquí...">
+    <button onclick="enviar()">Enviar</button>
+  </p>
+
+  <script>
+    let threadId = null;
+
+    async function enviar() {
+      const input = document.getElementById("msg");
+      const texto = input.value.trim();
+      if (!texto) return;
+      agregar("Tú", texto);
+      input.value = "";
+
+      const r = await fetch("http://localhost:8000/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mensaje: texto, thread_id: threadId })
+      });
+      const data = await r.json();
+      threadId = data.thread_id;          // guardar el hilo = memoria
+      agregar("Agente", data.respuesta);
+    }
+
+    function agregar(quien, texto) {
+      const log = document.getElementById("log");
+      log.innerHTML += "<p><b>" + quien + ":</b> " + texto + "</p>";
+      log.scrollTop = log.scrollHeight;
+    }
+  </script>
+</body>
+</html>
