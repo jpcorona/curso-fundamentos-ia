@@ -1,118 +1,63 @@
+"""
+Sesión 2 · Partes 04–06 — Búsqueda en tus documentos (RAG / File Search).
+Sube un archivo, lo indexa en un vector store y crea un agente que responde
+usando ese documento.
+Ejecuta:  python agente_docs.py   (corre desde esta carpeta: usa politica-vacaciones.txt)
+"""
 import os
-from pathlib import Path
-
 from dotenv import load_dotenv
 from azure.ai.projects import AIProjectClient
-from azure.ai.projects.models import FileSearchTool, PromptAgentDefinition
 from azure.identity import DefaultAzureCredential
-
+from azure.ai.agents.models import FilePurpose, FileSearchTool, ListSortOrder
 
 load_dotenv()
 
-POLITICA_PATH = Path(__file__).with_name("politica-vacaciones.txt")
-AGENT_NAME = "agente-rrhh"
+project = AIProjectClient(
+    endpoint=os.environ["PROJECT_ENDPOINT"],
+    credential=DefaultAzureCredential(),
+)
 
+# 1) Subir el archivo a Foundry (propósito: usarlo con agentes).
+archivo = project.agents.files.upload_and_poll(
+    file_path="politica-vacaciones.txt",
+    purpose=FilePurpose.AGENTS,
+)
+print(f"Archivo subido: {archivo.id}")
 
-def main():
-    endpoint = os.environ["PROJECT_ENDPOINT"]
-    modelo = os.environ["MODEL_DEPLOYMENT_NAME"]
+# 2) Crear un vector store (el índice de búsqueda) con ese archivo.
+vector_store = project.agents.vector_stores.create_and_poll(
+    file_ids=[archivo.id],
+    name="vs-politicas",
+)
+print(f"Vector store listo: {vector_store.id}")
 
-    credential = DefaultAzureCredential()
-    project = AIProjectClient(
-        endpoint=endpoint,
-        credential=credential,
-    )
-    openai = project.get_openai_client()
+# 3) Crear la herramienta de búsqueda apuntando al vector store.
+file_search = FileSearchTool(vector_store_ids=[vector_store.id])
 
-    conversation = None
-    agent = None
+# 4) Crear el agente CON la herramienta de búsqueda.
+agent = project.agents.create_agent(
+    model=os.environ["MODEL_DEPLOYMENT_NAME"],
+    name="agente-rrhh",
+    instructions=(
+        "Eres un asistente de RRHH. Responde SOLO con la información "
+        "de los documentos. Si no está en ellos, dilo con claridad."
+    ),
+    tools=file_search.definitions,
+    tool_resources=file_search.resources,
+)
+print(f"Agente creado: {agent.id}")
 
-    try:
-        vector_store = openai.vector_stores.create(
-            name="vs-politicas"
-        )
+# 5) Preguntar algo que solo está en el documento.
+thread = project.agents.threads.create()
+project.agents.messages.create(
+    thread_id=thread.id,
+    role="user",
+    content="¿Cuántos días de vacaciones tengo si llevo 6 años en la empresa?",
+)
+run = project.agents.runs.create_and_process(thread_id=thread.id, agent_id=agent.id)
+if run.status == "failed":
+    print(f"La ejecución falló: {run.last_error}")
 
-        with POLITICA_PATH.open("rb") as archivo:
-            carga = openai.vector_stores.files.upload_and_poll(
-                vector_store_id=vector_store.id,
-                file=archivo,
-            )
-
-        if getattr(carga, "status", None) == "failed":
-            raise RuntimeError(
-                "Foundry no pudo indexar politica-vacaciones.txt"
-            )
-
-        print(f"Vector store listo: {vector_store.id}")
-
-        agent = project.agents.create_version(
-            agent_name=AGENT_NAME,
-            definition=PromptAgentDefinition(
-                model=modelo,
-                instructions=(
-                    "Eres un asistente de RRHH. Responde solo con la "
-                    "información de los documentos disponibles mediante "
-                    "File Search. Si la respuesta no aparece en ellos, "
-                    "dilo con claridad."
-                ),
-                tools=[
-                    FileSearchTool(
-                        vector_store_ids=[vector_store.id]
-                    )
-                ],
-            ),
-            description=(
-                "Ejemplo docente RAG con File Search en Microsoft Foundry."
-            ),
-        )
-
-        print(f"Agente creado: {agent.name} v{agent.version}")
-
-        conversation = openai.conversations.create()
-
-        response = openai.responses.create(
-            conversation=conversation.id,
-            input=(
-                "¿Cuántos días de vacaciones tengo si llevo "
-                "6 años en la empresa?"
-            ),
-            extra_body={
-                "agent_reference": {
-                    "name": agent.name,
-                    "type": "agent_reference",
-                }
-            },
-        )
-
-        print("\nRespuesta del agente:")
-        print(response.output_text)
-
-    finally:
-        if conversation is not None:
-            try:
-                openai.conversations.delete(
-                    conversation_id=conversation.id
-                )
-            except Exception as exc:
-                print(
-                    f"Aviso: no se pudo borrar la conversación: {exc}"
-                )
-
-        if agent is not None:
-            try:
-                project.agents.delete_version(
-                    agent_name=agent.name,
-                    agent_version=agent.version,
-                )
-            except Exception as exc:
-                print(
-                    f"Aviso: no se pudo borrar la versión del agente: {exc}"
-                )
-
-        openai.close()
-        project.close()
-        credential.close()
-
-
-if __name__ == "__main__":
-    main()
+for m in project.agents.messages.list(thread_id=thread.id, order=ListSortOrder.ASCENDING):
+    if m.text_messages:
+        print(f"{m.role}: {m.text_messages[-1].text.value}")
